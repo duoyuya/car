@@ -9,20 +9,17 @@ const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
 const sqlite3 = require('sqlite3').verbose();
 
-// 加载环境变量
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
-// 初始化数据库
 const db = new sqlite3.Database(path.join(__dirname, 'data', 'car_notify.db'), (err) => {
   if (err) {
     console.error('数据库连接错误:', err.message);
   } else {
     console.log('✅ SQLite 数据库连接成功');
-    // 创建表结构
     db.run(`CREATE TABLE IF NOT EXISTS plates (
       id TEXT PRIMARY KEY,
       plate TEXT NOT NULL UNIQUE,
@@ -45,8 +42,6 @@ const db = new sqlite3.Database(path.join(__dirname, 'data', 'car_notify.db'), (
       ip TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    
-    // 初始化默认设置
     db.get("SELECT * FROM settings WHERE key = 'app_token'", (err, row) => {
       if (!row) {
         db.run("INSERT INTO settings (key, value) VALUES (?, ?)", 
@@ -56,11 +51,13 @@ const db = new sqlite3.Database(path.join(__dirname, 'data', 'car_notify.db'), (
   }
 });
 
-// 中间件
 app.use(express.json());
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
-// 登录限流
+app.get('/notify', (req, res) => {
+  res.sendFile(path.join(__dirname, 'notify.html'));
+});
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -69,7 +66,6 @@ const loginLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// JWT 认证中间件
 const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
   
@@ -88,7 +84,6 @@ const authenticateJWT = (req, res, next) => {
   });
 };
 
-// 日志记录中间件
 const logAction = (action) => {
   return (req, res, next) => {
     const originalSend = res.send;
@@ -116,7 +111,6 @@ const logAction = (action) => {
   };
 };
 
-// 登录接口 (使用 JWT)
 app.post('/admin/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -129,8 +123,6 @@ app.post('/admin/login', loginLimiter, async (req, res) => {
     if (username !== ADMIN_USER || !(await bcrypt.compare(password, ADMIN_PASSWORD_HASH))) {
       return res.status(401).json({ msg: '用户名或密码错误' });
     }
-    
-    // 生成 JWT 令牌
     const token = jwt.sign(
       { username: ADMIN_USER, role: 'admin' },
       JWT_SECRET,
@@ -147,7 +139,6 @@ app.post('/admin/login', loginLimiter, async (req, res) => {
   }
 });
 
-// 车牌管理 API
 app.get('/api/plates', authenticateJWT, (req, res) => {
   const { search, page = 1, limit = 10 } = req.query;
   const offset = (page - 1) * limit;
@@ -289,7 +280,6 @@ app.delete('/api/plates/:id', authenticateJWT, logAction('删除车牌'), (req, 
   });
 });
 
-// APP Token 管理
 app.get('/api/app-token', authenticateJWT, (req, res) => {
   db.get("SELECT value FROM settings WHERE key = 'app_token'", (err, row) => {
     if (err) {
@@ -320,16 +310,13 @@ app.post('/api/app-token', authenticateJWT, logAction('更新APP Token'), (req, 
   );
 });
 
-// 通知发送 API - 无需认证
 app.post('/api/notify', logAction('发送通知'), async (req, res) => {
   try {
-    const { plate } = req.body;
+    const { plate, message } = req.body;
     
     if (!plate) {
       return res.status(400).json({ msg: '车牌号必填' });
     }
-    
-    // 查询车牌信息
     db.get("SELECT * FROM plates WHERE plate = ?", [`云M${plate}`], (err, plateInfo) => {
       if (err) {
         return res.status(500).json({ msg: '查询车牌失败', error: err.message });
@@ -338,8 +325,7 @@ app.post('/api/notify', logAction('发送通知'), async (req, res) => {
       if (!plateInfo) {
         return res.status(404).json({ msg: '车牌不存在' });
       }
-      
-      // 查询 APP Token
+
       db.get("SELECT value FROM settings WHERE key = 'app_token'", async (err, tokenRow) => {
         if (err) {
           return res.status(500).json({ msg: '获取 APP Token 失败', error: err.message });
@@ -348,20 +334,23 @@ app.post('/api/notify', logAction('发送通知'), async (req, res) => {
         if (!tokenRow || !tokenRow.value) {
           return res.status(500).json({ msg: 'APP Token 未配置' });
         }
-        
-        // 构造消息内容
+
         const { uids, remark } = plateInfo;
-        
-        // 验证UID格式
+
         const validUids = uids.split(',').filter(uid => uid.trim() !== '');
         if (!validUids.length) {
           return res.status(400).json({ msg: '该车牌尚未配置有效的接收用户' });
         }
+
+        let content = `【挪车通知】车牌 ${plateInfo.plate}（备注：${remark || '无'}）需要挪车，来自 IP: ${req.ip}`;
+
+        if (message && message.trim()) {
+          content += `\n\n留言：${message.trim()}`;
+        }
         
-        const content = `【挪车通知】车牌 ${plateInfo.plate}（备注：${remark || '无'}）需要挪车，来自 IP: ${req.ip}，请及时处理！`;
+        content += '\n\n请及时处理！';
         
         try {
-          // 调用 WxPusher API
           const response = await fetch("https://wxpusher.zjiecode.com/api/send/message", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -390,7 +379,6 @@ app.post('/api/notify', logAction('发送通知'), async (req, res) => {
   }
 });
 
-// 日志查询 API
 app.get('/api/logs', authenticateJWT, (req, res) => {
   const { page = 1, limit = 20, action } = req.query;
   const offset = (page - 1) * limit;
@@ -428,7 +416,6 @@ app.get('/api/logs', authenticateJWT, (req, res) => {
   });
 });
 
-// 批量删除日志 API
 app.delete('/api/logs', authenticateJWT, logAction('删除日志'), (req, res) => {
   const { ids } = req.body;
   
@@ -451,23 +438,19 @@ app.delete('/api/logs', authenticateJWT, logAction('删除日志'), (req, res) =
   );
 });
 
-// 根路径重定向到发送通知页面
 app.get('/', (req, res) => {
   res.redirect('/admin/index.html');
 });
 
-// 404 处理
 app.use((req, res) => {
   res.status(404).json({ msg: '接口不存在' });
 });
 
-// 启动服务器
 app.listen(PORT, () => {
   console.log(`✅ 服务已启动：http://localhost:${PORT}`);
   console.log(`🔑 后台登录：http://localhost:${PORT}/admin/login.html`);
 });
 
-// 优雅关闭
 process.on('SIGINT', () => {
   db.close((err) => {
     if (err) {

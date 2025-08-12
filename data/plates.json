@@ -33,5 +33,45 @@
       "UID_mz9JWwuddvB3xjdiDmV9lEaRNv8v"
     ],
     "remark": "测试1"
+  },
+  {
+    "id": "f79f15a4-bdc1-4068-a815-6acb10d06c12",
+    "plate": "云M123456",
+    "uids": [
+      "123456"
+    ],
+    "remark": "",
+    "created_at": "2025-08-11T18:34:51.599Z",
+    "updated_at": "2025-08-11T18:34:51.599Z"
+  },
+  {
+    "id": "7ffdab8c-bd1e-460c-adfe-f21aac3509af",
+    "plate": "云M111111",
+    "uids": [
+      "111111"
+    ],
+    "remark": "",
+    "created_at": "2025-08-11T18:36:01.289Z",
+    "updated_at": "2025-08-11T18:36:01.289Z"
+  },
+  {
+    "id": "9967eef1-461b-4e1c-b666-6eaa72ff94ad",
+    "plate": "云M888888",
+    "uids": [
+      "222555lll"
+    ],
+    "remark": "",
+    "created_at": "2025-08-11T19:13:19.085Z",
+    "updated_at": "2025-08-11T19:13:19.085Z"
+  },
+  {
+    "id": "d4bcada5-5f36-44cf-8fb6-b3b57b0e9415",
+    "plate": "云M114514",
+    "uids": [
+      "UID_7crHLAzsw1RQOFIsPHwdiDJLmSbf"
+    ],
+    "remark": "",
+    "created_at": "2025-08-11T20:31:39.040Z",
+    "updated_at": "2025-08-12T03:12:22.903Z"
   }
 ]

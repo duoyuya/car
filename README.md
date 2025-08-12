@@ -34,7 +34,7 @@ JWT_EXPIRES_IN=24h
 ```
 
 ### 2. 修改管理员密码（可选）
-1. 访问 [bcrypt-generator.com](https://bcrypt-generator.com/)
+1. 访问 bcrypt-generator.com
 2. 输入新密码（如`123456`）
 3. 工作因子保持默认`10`
 4. 点击"Generate Bcrypt Hash"生成哈希值
@@ -99,7 +99,7 @@ docker-compose up -d
 ##### 1.1 修改通知查询前缀
 找到通知发送API中的车牌查询语句（约350行）：
 ```javascript
-// 查询车牌信息
+
 db.get("SELECT * FROM plates WHERE plate = ?", [`云M${plate}`], (err, plateInfo) => { ... })
 ```
 **修改为**（以"京A"为例）：

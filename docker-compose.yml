@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  car-notify:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    container_name: car-notify-system

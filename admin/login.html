@@ -184,7 +184,7 @@
       errorEl.textContent = '';
       
       try {
-        const response = await fetch('/admin/login', {
+        const response = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
@@ -199,7 +199,7 @@
           window.location.href = '/admin/plate-management.html';
         } else {
           // 登录失败
-          errorEl.textContent = data.msg || '登录失败，请重试';
+          errorEl.textContent = data.error || '登录失败，请重试';
           loginBtn.disabled = false;
           loginBtn.textContent = '登录';
         }
